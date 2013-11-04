@@ -107,6 +107,16 @@ def export_for_goodreads w, config
   end
 end
 
+def dump_stats w
+  row = 2
+  isbns = Hash.new(0)
+  while not w[row, 1].empty?
+    isbns[ w[row,10] ] += 1
+    row += 1
+  end
+  puts "total records %s, unique records %s" % [row-1, isbns.length]
+end
+
 #require 'irb'; require 'irb/completion'
 #IRB.start
 
@@ -115,7 +125,8 @@ worksheet = open_worksheet config
 
 #fix_names worksheet; worksheet.save
 #find_isbns worksheet; worksheet.save
-export_for_goodreads worksheet, config
+#export_for_goodreads worksheet, config
+dump_stats worksheet
 
 # optional whitelist of ISBN, one per line, for repeat runs on failed imports for example
 __END__
