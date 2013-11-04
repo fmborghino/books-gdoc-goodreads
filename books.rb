@@ -1,14 +1,35 @@
 require 'rubygems'
 require 'google_drive'
+require 'openlibrary'
 
 # config
-auth = { user: "you@gmail.com", pw: "somesecret" }
-spreadsheet_name = "Books"
-worksheet_name = "Sheet 1"
+config = {
+  auth: { user: "you@gmail.com", pw: "somesecret" },
+  spreadsheet_name: "Books",
+  worksheet_name: "Sheet 1"
+}
 
 def bail msg, code=1
   puts msg
   exit code
+end
+
+def open_worksheet config
+  # gdoc login with app password
+  begin
+    session = GoogleDrive.login(config[:auth][:user], config[:auth][:pw])
+  rescue Exception => e
+    bail "login failed"
+    puts e.message
+  end
+
+  # grab correct spreadsheet and worksheet
+  spreadsheet = session.spreadsheet_by_title(config[:spreadsheet_name])
+  bail "cannot find spreadsheet %s" % config[:spreadsheet_name] if spreadsheet.nil?
+  worksheet = spreadsheet.worksheet_by_title(config[:worksheet_name])
+  bail "cannot find worksheet %s" % config[:worksheet_name] if worksheet.nil?
+
+  return worksheet
 end
 
 def fix_name name
@@ -28,19 +49,42 @@ def fix_names w
   end
 end
 
-# login with app password
-begin
-  session = GoogleDrive.login(auth[:user], auth[:pw])
-rescue Exception => e
-  bail "login failed"
-  puts e.message
+def find_isbns w
+  client = Openlibrary::Client.new
+  found = 0
+  row = 2
+  while not (name = w[row, 2]).empty?
+    last_name = name.split(',').first
+    # search api breaks on punctuation, remove it, keep spaces
+    title = w[row, 1].gsub(/([^\w ])/, '')
+    begin
+      results = client.search({author: last_name, title: title})
+      isbn = nil
+      # some results do not have an isbn, so keep trying
+      for r in results
+        if not r.isbn.nil?
+          isbn = r.isbn.first
+          break
+        end
+      end
+      puts "%-3s: %s | %s -> %s" % [row, last_name, title, isbn]
+      found += 1 if not isbn.nil?
+      w[row, 11] = isbn.to_s
+    rescue Exception => e
+      puts "%-3s: %s" % [row, e.message]
+    end
+    row += 1
+  end
+  puts "found %s, missing %s" % [found, (row - 1 - found)]
 end
 
-# grab correct spreadsheet and worksheet
-spreadsheet = session.spreadsheet_by_title(spreadsheet_name)
-bail "cannot find spreadsheet %s" % spreadsheet_name if spreadsheet.nil?
-worksheet = spreadsheet.worksheet_by_title(worksheet_name)
-bail "cannot find worksheet %s" % worksheet_name if worksheet.nil?
+#require 'irb'; require 'irb/completion'
+#IRB.start
 
-fix_names worksheet
+# main
+worksheet = open_worksheet config
+
+#fix_names worksheet
+find_isbns worksheet
+
 worksheet.save
