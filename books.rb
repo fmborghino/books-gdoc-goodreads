@@ -85,7 +85,7 @@ end
 # my format is (dates are %m/%d/%Y)
 # Title, Author, DateStart, DateFinish, Note, Days Open, Good book, Liked it, Ebook, ISBN
 def export_for_goodreads w, config
-  missing = DATA.readlines.map(&:chomp)
+  missing = DATA.readlines.map(&:chomp).map{|e| e.gsub(/\W/, '')}
   row = 2
   CSV.open(config[:csv_file], "wb") do |csv|
     csv << ['Title', 'Author', 'ISBN', 'My Rating', 'Average Rating', 'Publisher', 'Binding', 'Year Published', 'Original Publication Year', 'Date Read', 'Date Added', 'Bookshelves', 'My Review']
@@ -119,3 +119,18 @@ export_for_goodreads worksheet, config
 
 # optional whitelist of ISBN, one per line, for repeat runs on failed imports for example
 __END__
+9781870886123		
+9780756754730		
+9788700994713		
+4400695622		
+9785557082655		
+9787536671805		
+1101001925		
+9780712651066		
+9780812550757		
+9780553374599		
+9781417700929		
+8700566640		
+9781407035192		
+1404302433		
+9990458359
