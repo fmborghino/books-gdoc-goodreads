@@ -8,7 +8,8 @@ config = {
   auth: { user: "you@gmail.com", pw: "somesecret" },
   spreadsheet_name: "Books",
   worksheet_name: "Sheet 1",
-  csv_file: "goodreads.csv"
+  csv_file_out: "goodreads.csv",
+  csv_file_in: "goodreads_export.csv"
 }
 
 def bail msg, code=1
@@ -87,7 +88,7 @@ end
 def export_for_goodreads w, config
   missing = DATA.readlines.map(&:chomp).map{|e| e.gsub(/\W/, '')}
   row = 2
-  CSV.open(config[:csv_file], "wb") do |csv|
+  CSV.open(config[:csv_file_out], "wb") do |csv|
     csv << ['Title', 'Author', 'ISBN', 'My Rating', 'Average Rating', 'Publisher', 'Binding', 'Year Published', 'Original Publication Year', 'Date Read', 'Date Added', 'Bookshelves', 'My Review']
     while not w[row, 1].empty?
       isbn = w[row, 10]
@@ -111,10 +112,49 @@ def dump_stats w
   row = 2
   isbns = Hash.new(0)
   while not w[row, 1].empty?
-    isbns[ w[row,10] ] += 1
+    isbn = w[row, 10]
+    isbns[ isbn ] += 1
+    print "row %s | %s" % [row, isbn] if not (isbn.empty? or isbn.length == 10 or isbn.length == 13)
     row += 1
   end
   puts "total records %s, unique records %s" % [row-1, isbns.length]
+end
+
+# goodreads import seems to have ignored some books, use the export from there to find which ones
+def find_missing_from_goodreads w, config
+  row = 2
+  books = {}
+  # build a hash of my books keyed by isbn
+  while not w[row, 1].empty?
+    isbn = w[row,10].to_s
+    if not isbn.empty?
+      books[ isbn ] = { title: w[row,1], author: w[row,2] }
+    end
+    row += 1
+  end
+  puts "master list books includes %s uniques" % books.length
+  #
+  # scan isbn (both 10 and 13) in export and remove those from my list
+  # goodreads exported file has these headers
+  # Book Id,Title,Author,Author l-f,Additional Authors,ISBN,ISBN13,My Rating,Average Rating,Publisher,Binding,Number of Pages,Year Published,Original Publication Year,Date Read,Date Added,Bookshelves,Bookshelves with positions,Exclusive Shelf,My Review,Spoiler,Private Notes,Read Count,Recommended For,Recommended By,Owned Copies,Original Purchase Date,Original Purchase Location,Condition,Condition Description,BCID
+  # the ISBN fields look like
+  # ="0374519994",="9780374519995" (or ="") which is broken and blows up the CSV parser, so strip those first
+  open(config[:csv_file_in], "r").each do |l|
+    l = l.gsub(/=""/, '""').gsub(/="([\dxX]+)"/, '"\1"')
+    CSV.parse(l) do |r|
+      #title = r[1]
+      #author = r[2]
+      isbn10 = r[5].gsub(/\W/, '').to_s
+      isbn13 = r[6].gsub(/\W/, '').to_s
+      books.delete(isbn10)
+      books.delete(isbn13)
+      #found = ( books.include?(isbn10) or books.include?(isbn13) )
+      #puts "%-20s | %-15s | %s | %s" % [title, author, isbn10, isbn13]
+    end
+  end
+  puts "after removing matches from goodreads there are %s uniques" % books.length
+  #books.each { |k, v| puts "%-20s | %-15s | %s " % [v[:title][0..19], v[:author][0..14], k] }
+  books.each { |k, v| puts k }
 end
 
 #require 'irb'; require 'irb/completion'
@@ -127,21 +167,7 @@ worksheet = open_worksheet config
 #find_isbns worksheet; worksheet.save
 #export_for_goodreads worksheet, config
 dump_stats worksheet
+#find_missing_from_goodreads worksheet, config
 
 # optional whitelist of ISBN, one per line, for repeat runs on failed imports for example
 __END__
-9781870886123		
-9780756754730		
-9788700994713		
-4400695622		
-9785557082655		
-9787536671805		
-1101001925		
-9780712651066		
-9780812550757		
-9780553374599		
-9781417700929		
-8700566640		
-9781407035192		
-1404302433		
-9990458359
