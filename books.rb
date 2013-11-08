@@ -2,15 +2,9 @@ require 'rubygems'
 require 'google_drive'
 require 'openlibrary'
 require 'csv'
+require 'yaml'
 
-# config
-config = {
-  auth: { user: "you@gmail.com", pw: "somesecret" },
-  spreadsheet_name: "Books",
-  worksheet_name: "Sheet 1",
-  csv_file_out: "goodreads.csv",
-  csv_file_in: "goodreads_export.csv"
-}
+config = YAML::load(File.open('./config.yml'))
 
 def bail msg, code=1
   puts msg
@@ -36,7 +30,7 @@ def open_worksheet config
 end
 
 def fix_name name
-  # FOO, Bar -> Foo, Bar
+  # Fix Author name: FOO, Bar -> Foo, Bar
   m = name.match(/^([A-Z]+), +(.+)/)
   return name if m.nil?
   return "%s, %s" % [ m[1].capitalize, m[2] ]

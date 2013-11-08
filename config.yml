@@ -1,0 +1,8 @@
+---
+  :auth:
+    :user: you@gmail.com
+    :pw:   somesecret
+  :spreadsheet_name: Books
+  :worksheet_name:   Sheet 1
+  :csv_file_out: goodreads_import.csv
+  :csv_file_in:  goodreads_export.csv
