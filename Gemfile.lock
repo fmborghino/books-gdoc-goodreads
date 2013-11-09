@@ -10,6 +10,7 @@ GEM
     atomic (1.1.14)
     faraday (0.8.8)
       multipart-post (~> 1.2.0)
+    gli (2.8.1)
     google_drive (0.3.6)
       nokogiri (>= 1.4.4, != 1.5.2, != 1.5.1)
       oauth (>= 0.3.6)
@@ -52,5 +53,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  gli
   google_drive
   openlibrary

@@ -1,10 +1,10 @@
+#!/usr/bin/env ruby
 require 'rubygems'
 require 'google_drive'
 require 'openlibrary'
 require 'csv'
 require 'yaml'
-
-config = YAML::load(File.open('./config.yml'))
+require 'gli'
 
 def bail msg, code=1
   puts msg
@@ -155,13 +155,48 @@ end
 #IRB.start
 
 # main
-worksheet = open_worksheet config
+include GLI::App
 
-#fix_names worksheet; worksheet.save
-#find_isbns worksheet; worksheet.save
-#export_for_goodreads worksheet, config
-dump_stats worksheet
-#find_missing_from_goodreads worksheet, config
+program_desc "Simple ad-hoc tools for managing a google doc spreadsheet of books"
+
+pre do |global_options,command,options,args|
+  $config = YAML::load(File.open('./config.yml'))
+  $worksheet = open_worksheet $config
+end
+
+command :fix_names do |c|
+  c.action do
+    fix_names $worksheet
+    $worksheet.save
+  end
+end
+
+command :fix_isbns do |c|
+  c.action do
+    find_isbns $worksheet
+    $worksheet.save
+  end
+end
+
+command :export_for_goodreads do |c|
+  c.action do
+    export_for_goodreads $worksheet, $config
+  end
+end
+
+command :dump_stats do |c|
+  c.action do
+    dump_stats $worksheet
+  end
+end
+
+command :find_missing_from_goodreads do |c|
+  c.action do
+    find_missing_from_goodreads $worksheet, $config
+  end
+end
+
+exit run(ARGV)
 
 # optional whitelist of ISBN, one per line, for repeat runs on failed imports for example
 __END__
