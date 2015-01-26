@@ -46,38 +46,43 @@ def fix_names w
   end
 end
 
+# use OpenLibrary search to fill in missing ISBNs, this does not always work
 def find_isbns w
   client = Openlibrary::Client.new
   found = 0
+  missing = 0
   row = 2
   while not (name = w[row, 2]).empty?
-    last_name = name.split(',').first
-    # search api breaks on punctuation, remove it, keep spaces
-    title = w[row, 1].gsub(/([^\w ])/, '')
-    begin
-      results = client.search({author: last_name, title: title})
-      isbn = nil
-      # some results do not have an isbn, so keep trying
-      for r in results
-        if not r.isbn.nil?
-          isbn = r.isbn.first
-          break
+    isbn = w[row, 10]
+    if isbn.empty?
+      missing += 1
+      last_name = name.split(',').first
+      # search api breaks on punctuation, remove it, keep spaces
+      title = w[row, 1].gsub(/([^\w ])/, '')
+      begin
+        results = client.search({author: last_name, title: title})
+        # some results do not have an isbn, so keep trying
+        for r in results
+          if not r.isbn.nil?
+            isbn = r.isbn.first
+            break
+          end
         end
+        puts "%-3s: %s | %s -> %s" % [row, last_name, title, isbn]
+        found += 1 if not isbn.empty?
+        w[row, 10] = isbn.to_s
+      rescue Exception => e
+        puts "%-3s: %s" % [row, e.message]
       end
-      puts "%-3s: %s | %s -> %s" % [row, last_name, title, isbn]
-      found += 1 if not isbn.nil?
-      w[row, 10] = isbn.to_s
-    rescue Exception => e
-      puts "%-3s: %s" % [row, e.message]
     end
     row += 1
   end
-  puts "found %s, missing %s" % [found, (row - 1 - found)]
+  puts "found %s, missing %s" % [found, missing]
 end
 
 # goodreads format is (expects dates as %Y-%m-%d ISO 8601)
 # Title, Author, ISBN, My Rating, Average Rating, Publisher, Binding, Year Published, Original Publication Year, Date Read, Date Added, Bookshelves, My Review
-# my format is (dates are %m/%d/%Y)
+# my format is (dates are %Y-%m-%d)
 # Title, Author, DateStart, DateFinish, Note, Days Open, Good book, Liked it, Ebook, ISBN
 def export_for_goodreads w, config
   missing = DATA.readlines.map(&:chomp).map{|e| e.gsub(/\W/, '')}
@@ -93,7 +98,7 @@ def export_for_goodreads w, config
         author = w[row, 2].split(',').first
         rating = w[row, 8].count('*')
         date_read = w[row, 3]
-        date_fmt = Date.strptime(date_read, '%m/%d/%Y').strftime('%F')
+        date_fmt = Date.strptime(date_read, '%Y-%m-%d').strftime('%F')
         csv << [ title, author, isbn, rating, "", "", "", "", "", date_fmt, "", "", ""]
         puts "%-3s: %-15s | %-10s | %s | %-13s | %s -> %s" % [row, title[0..14], author[0..9], rating, isbn[0..12], date_read, date_fmt]
       end
