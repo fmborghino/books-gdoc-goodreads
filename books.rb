@@ -1,10 +1,9 @@
 #!/usr/bin/env ruby
-require 'rubygems'
+require 'csv'
+require 'gli'
 require 'google_drive'
 require 'openlibrary'
-require 'csv'
 require 'yaml'
-require 'gli'
 
 def bail msg, code=1
   puts msg
@@ -31,22 +30,29 @@ end
 
 def fix_name name
   # Fix Author name: FOO, Bar -> Foo, Bar
+  # Return name if the source doesn't match
   m = name.match(/^([A-Z]+), +(.+)/)
   return name if m.nil?
   return "%s, %s" % [ m[1].capitalize, m[2] ]
 end
 
+# bulk fix of names, very narrow mapping of known wonky source names
 def fix_names w
   row = 2
+  changed = 0
   while not (name = w[row, 2]).empty?
     fixed = fix_name(name)
-    puts "%-3s: %s\n     %s" % [row, name, fixed]
-    w[row, 2] = fixed
+    if fixed != name
+      puts "%-3s: %s\n     %s" % [row, name, fixed]
+      w[row, 2] = fixed
+      changed += 1
+    end
     row += 1
   end
+  puts "changed %s" % changed
 end
 
-# use OpenLibrary search to fill in missing ISBNs, this does not always work
+# use OpenLibrary search to fill in missing ISBNs, this does not always work, don't try to change existing ISBNs
 def find_isbns w
   client = Openlibrary::Client.new
   found = 0
@@ -91,14 +97,20 @@ def export_for_goodreads w, config
     csv << ['Title', 'Author', 'ISBN', 'My Rating', 'Average Rating', 'Publisher', 'Binding', 'Year Published', 'Original Publication Year', 'Date Read', 'Date Added', 'Bookshelves', 'My Review']
     while not w[row, 1].empty?
       isbn = w[row, 10]
-      # use optional whiltelist in the DATA area below
+      # use optional whitelist in the DATA area below
       if not isbn.empty? and (missing.length == 0 or missing.include?(isbn))
         title = w[row, 1]
         # last name only
         author = w[row, 2].split(',').first
         rating = w[row, 8].count('*')
         date_read = w[row, 3]
-        date_fmt = Date.strptime(date_read, '%Y-%m-%d').strftime('%F')
+        begin
+          # GDoc date format reads out %m/%d/%Y no matter what display format you've set
+          date_fmt = Date.strptime(date_read, '%m/%d/%Y').strftime('%F')
+        rescue Exception => e
+          puts "row %s: %s" % [row, date_read]
+          raise e
+        end
         csv << [ title, author, isbn, rating, "", "", "", "", "", date_fmt, "", "", ""]
         puts "%-3s: %-15s | %-10s | %s | %-13s | %s -> %s" % [row, title[0..14], author[0..9], rating, isbn[0..12], date_read, date_fmt]
       end
