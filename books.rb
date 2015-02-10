@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 require 'csv'
 require 'gli'
-require 'google_drive'
+require 'google_drive_v0'
+require 'active_support'  # dependency not pulled in correctly in openlibrary
 require 'openlibrary'
 require 'yaml'
 
@@ -13,7 +14,7 @@ end
 def open_worksheet config
   # gdoc login with app password
   begin
-    session = GoogleDrive.login(config[:auth][:user], config[:auth][:pw])
+    session = GoogleDriveV0.login(config[:auth][:user], config[:auth][:pw])
   rescue Exception => e
     bail "login failed"
     puts e.message
