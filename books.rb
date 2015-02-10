@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 require 'csv'
 require 'gli'
-require 'google_drive_v0'
+require 'google/api_client'
+require 'google_drive'
 require 'active_support'  # dependency not pulled in correctly in openlibrary
 require 'openlibrary'
 require 'yaml'
@@ -16,7 +17,8 @@ end
 def open_worksheet(config)
   # google doc login with app password
   begin
-    session = GoogleDriveV0.login(config[:auth][:user], config[:auth][:pw])
+    access_token = get_google_access_token(config[:oauth])
+    session = GoogleDrive.login_with_oauth(access_token)
   rescue Exception => e
     bail 'login failed'
     puts e.message
@@ -97,7 +99,7 @@ end
 def export_for_goodreads(w, config)
   missing = DATA.readlines.map(&:chomp).map{|e| e.gsub(/\W/, '')}
   row = 2
-  CSV.open(config[:csv_file_out], "wb") do |csv|
+  CSV.open(config[:csv_file_out], 'wb') do |csv|
     csv << ['Title', 'Author', 'ISBN', 'My Rating', 'Average Rating', 'Publisher', 'Binding', 'Year Published',
             'Original Publication Year', 'Date Read', 'Date Added', 'Bookshelves', 'My Review']
     until w[row, 1].empty?
@@ -159,7 +161,7 @@ def find_missing_from_goodreads(w, config)
   # Recommended By,Owned Copies,Original Purchase Date,Original Purchase Location,Condition,Condition Description,BCID
   # the ISBN fields look like
   # ="0374519994",="9780374519995" (or ="") which is broken and blows up the CSV parser, so strip those first
-  open(config[:csv_file_in], "r").each do |l|
+  open(config[:csv_file_in], 'r').each do |l|
     l = l.gsub(/=""/, '""').gsub(/="([\dxX]+)"/, '"\1"')
     CSV.parse(l) do |r|
       #title = r[1]
@@ -172,9 +174,36 @@ def find_missing_from_goodreads(w, config)
       #puts "%-20s | %-15s | %s | %s" % [title, author, isbn10, isbn13]
     end
   end
-  puts 'after removing matches from goodreads there are %s uniques' % books.length
+  puts 'after removing matches from goodreads there are %s unique' % books.length
   #books.each { |k, v| puts "%-20s | %-15s | %s " % [v[:title][0..19], v[:author][0..14], k] }
   books.each { |k, _| puts k }
+end
+
+# authorizes with oauth and gets an access token
+# cf. http://www.rubydoc.info/github/gimite/google-drive-ruby/GoogleDrive.login_with_oauth
+def get_google_access_token(oauth)
+  client = Google::APIClient.new
+  auth = client.authorization
+  auth.client_id = oauth[:client_id]
+  auth.client_secret = oauth[:client_secret]
+  auth.scope = 'https://www.googleapis.com/auth/drive https://spreadsheets.google.com/feeds/'
+  auth.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
+  print("1. Open this page:\n%s\n\n" % auth.authorization_uri)
+  print('2. Enter the authorization code shown: ')
+  open_browser(auth.authorization_uri)
+  auth.code = $stdin.gets.chomp
+  auth.fetch_access_token!
+  auth.access_token
+end
+
+def open_browser(url)
+  if RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/
+    system "start #{url}"
+  elsif RbConfig::CONFIG['host_os'] =~ /darwin/
+    system "open '#{url}'"
+  elsif RbConfig::CONFIG['host_os'] =~ /linux|bsd/
+    system "xdg-open '#{url}'"
+  end
 end
 
 #require 'irb'; require 'irb/completion'

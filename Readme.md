@@ -10,7 +10,8 @@
 - optionally bake your favorite ruby gem environment
 - gem install bundler; bundle install
 - cp example_config.yml config.yml
-- add a [google app password](https://security.google.com/settings/security/apppasswords) to the config with your username
+- [create oauth client at google](https://developers.google.com/drive/web/auth/web-server)
+- add the secrets to the config
   - don't commit those secrets! (the .gitignore will help you there)
 
 ## Watch out
@@ -19,5 +20,6 @@ If you mess up completely, remember that GDoc lets you view and restore history 
 
 Goodreads [import](https://www.goodreads.com/review/import/) has idiosyncrasies which will probably vary over time.
 
-They have an [API](https://www.goodreads.com/api) too but at the time of writing this, I couldn't do what I wanted with it.
+They have an [API](https://www.goodreads.com/api) too but at the time of writing this, I couldn't do what I wanted
+with it.
 

@@ -1,5 +1,5 @@
-source "https://rubygems.org"
-ruby "2.1.1"
+source 'https://rubygems.org'
+ruby '2.1.1'
+gem 'gli'
 gem 'google_drive'
 gem 'openlibrary'
-gem 'gli'

@@ -1,2 +1,4 @@
 *.csv
 config.yml
+token.cache
+BUGS.txt

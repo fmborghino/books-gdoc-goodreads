@@ -1,7 +1,7 @@
 ---
-  :auth:
-    :user: you@gmail.com
-    :pw:   somesecret
+  :oauth:
+    :client_id:       your_client_id
+    :client_secret:   your_client_secret
   :spreadsheet_name: Books
   :worksheet_name:   Sheet 1
   :csv_file_out: goodreads_import.csv
