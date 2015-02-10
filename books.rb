@@ -97,13 +97,13 @@ end
 # Original Publication Year, Date Read, Date Added, Bookshelves, My Review
 # my format is (dates are %Y-%m-%d)
 # Title, Author, DateStart, DateFinish, Note, Days Open, Good book, Liked it, Ebook, ISBN
-def export_for_goodreads(w, config)
+def export_for_goodreads(w, config, count=0)
   missing = DATA.readlines.map(&:chomp).map{|e| e.gsub(/\W/, '')}
   row = 2
   CSV.open(config[:csv_file_out], 'wb') do |csv|
     csv << ['Title', 'Author', 'ISBN', 'My Rating', 'Average Rating', 'Publisher', 'Binding', 'Year Published',
             'Original Publication Year', 'Date Read', 'Date Added', 'Bookshelves', 'My Review']
-    until w[row, 1].empty?
+    until w[row, 1].empty? or (count > 0 and row - 1 > count) # end of sheet or just the first count records
       isbn = w[row, 10]
       # use optional whitelist in the DATA area below
       if not isbn.empty? and (missing.length == 0 or missing.include?(isbn))
@@ -120,7 +120,7 @@ def export_for_goodreads(w, config)
           raise e
         end
         csv << [ title, author, isbn, rating, '', '', '', '', '', date_fmt, '', '', '']
-        puts '%-3s: %-15s | %-10s | %s | %-13s | %s -> %s' % [row, title[0..14], author[0..9], rating, isbn[0..12],
+        puts '%-3s: %-15s | %-10s | %s | %-13s | %s -> %s' % [row - 1, title[0..14], author[0..9], rating, isbn[0..12],
                                                               date_read, date_fmt]
       end
       row += 1
@@ -240,8 +240,9 @@ command :fix_isbns do |c|
 end
 
 command :export_for_goodreads do |c|
-  c.action do
-    export_for_goodreads $worksheet, $config
+  c.flag [:c, :count,'count'], desc: 'number of recent records to dump, zero for all', default_value: 0, type: Numeric
+  c.action do |global_options, options, args|
+    export_for_goodreads $worksheet, $config, options[:count]
   end
 end
 
