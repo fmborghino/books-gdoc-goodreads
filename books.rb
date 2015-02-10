@@ -8,6 +8,7 @@ require 'openlibrary'
 require 'yaml'
 
 CONFIG = './config.yml'
+TOKEN_CACHE = './token.cache'
 
 def bail(msg, code=1)
   puts msg
@@ -182,17 +183,22 @@ end
 # authorizes with oauth and gets an access token
 # cf. http://www.rubydoc.info/github/gimite/google-drive-ruby/GoogleDrive.login_with_oauth
 def get_google_access_token(oauth)
-  client = Google::APIClient.new
+  client = Google::APIClient.new(application_name: oauth[:app_name], application_version: oauth[:app_version])
   auth = client.authorization
   auth.client_id = oauth[:client_id]
   auth.client_secret = oauth[:client_secret]
   auth.scope = 'https://www.googleapis.com/auth/drive https://spreadsheets.google.com/feeds/'
   auth.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
-  print("1. Open this page:\n%s\n\n" % auth.authorization_uri)
-  print('2. Enter the authorization code shown: ')
-  open_browser(auth.authorization_uri)
-  auth.code = $stdin.gets.chomp
+  if File.exist? TOKEN_CACHE
+    auth.refresh_token = YAML.load(File.read(TOKEN_CACHE))
+  else
+    print("1. Open this page:\n%s\n\n" % auth.authorization_uri)
+    print('2. Enter the authorization code shown: ')
+    open_browser(auth.authorization_uri)
+    auth.code = $stdin.gets.chomp
+  end
   auth.fetch_access_token!
+  File.open(TOKEN_CACHE, 'w') {|f| f.write(YAML.dump(auth.refresh_token)) }
   auth.access_token
 end
 

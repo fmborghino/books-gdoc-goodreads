@@ -1,7 +1,10 @@
 ---
   :oauth:
-    :client_id:       your_client_id
-    :client_secret:   your_client_secret
+    :client_id:      your_client_id
+    :client_secret:  your_client_secret
+    # these can be anything...
+    :app_name:       books-gdoc-goodreads
+    :app_version:    0.9
   :spreadsheet_name: Books
   :worksheet_name:   Sheet 1
   :csv_file_out: goodreads_import.csv
