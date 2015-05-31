@@ -113,8 +113,8 @@ def export_for_goodreads(w, config, count=0)
         rating = w[row, 8].count('*')
         date_read = w[row, 3]
         begin
-          # GDoc date format reads out %m/%d/%Y no matter what display format you've set
-          date_fmt = Date.strptime(date_read, '%m/%d/%Y').strftime('%F')
+          # GDoc seems to read the date the same as the display format (this has changed over time)
+          date_fmt = Date.strptime(date_read, '%Y-%m-%d').strftime('%F')
         rescue Exception => e
           puts 'row %s: %s' % [row, date_read]
           raise e
